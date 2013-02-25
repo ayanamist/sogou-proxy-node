@@ -25,11 +25,10 @@ var sogou = require("./sogou");
 var localAddr = '0.0.0.0',
     localPort = 8083,
     sogouAuthStr = sogou.newAuthStr(),
-    sogouServerAddr = sogou.newServerAddr("edu");
+    sogouServerAddr = sogou.newServerAddr("edu"),
+    proxyServer = http.createServer();
 
-var proxyServer = http.createServer();
-
-var newProxyRequestOptions = function(request) {
+var newProxyRequest = function (request) {
     var reqHost = request.headers.host;
     if (typeof reqHost === "undefined") {
         if (request.method.toUpperCase() === "CONNECT") {
@@ -58,21 +57,23 @@ var newProxyRequestOptions = function(request) {
     requestOptions.headers['X-Sogou-Auth'] = sogouAuthStr;
     requestOptions.headers['X-Sogou-Timestamp'] = timestamp;
     requestOptions.headers['X-Sogou-Tag'] = sogou_tag;
-    return requestOptions;
+
+    var proxyRequest = http.request(requestOptions);
+    proxyRequest.on("error", function (err) {
+        console.error('Proxy Error: ' + err.message);
+    });
+
+    return proxyRequest;
 };
 
 proxyServer.on("request", function (cltRequest, cltResponse) {
-    var srvRequestOptions = newProxyRequestOptions(cltRequest);
-    if ( ! Object.keys(srvRequestOptions).length) {
+    var srvRequest = newProxyRequest(cltRequest);
+    if (!Object.keys(srvRequest).length) {
         cltResponse.writeHead(400);
         cltResponse.end("Request HTTP Header \"Host\" missing!");
         return;
     }
 
-    var srvRequest = http.request(srvRequestOptions);
-    srvRequest.on("error", function(err){
-        console.error('Proxy Error: ' + err.message);
-    });
     srvRequest.on("response", function (srvResponse) {
         cltResponse.writeHead(srvResponse.statusCode, srvResponse.headers);
         srvResponse.pipe(cltResponse);
@@ -80,18 +81,15 @@ proxyServer.on("request", function (cltRequest, cltResponse) {
     cltRequest.pipe(srvRequest);
 });
 
-proxyServer.on("connect", function(cltRequest, cltSocket){
-    var srvRequestOptions = newProxyRequestOptions(cltRequest);
-    if ( ! Object.keys(srvRequestOptions).length) {
+proxyServer.on("connect", function (cltRequest, cltSocket) {
+    var srvRequest = newProxyRequest(cltRequest);
+    if (!Object.keys(srvRequest).length) {
         cltSocket.end("HTTP/1.1 400 Bad Request\r\n\r\nRequest HTTP Header \"Host\" missing!");
         return;
     }
-    var srvRequest = http.request(srvRequestOptions);
+
     srvRequest.end();
-    srvRequest.on("error", function(err){
-        console.error('Proxy Error: ' + err.message);
-    });
-    srvRequest.on("connect", function(srvResponse, srvSocket){
+    srvRequest.on("connect", function (srvResponse, srvSocket) {
         cltSocket.write("HTTP/1.1 200 Connection Established\r\n\r\n");
         srvSocket.pipe(cltSocket);
         cltSocket.pipe(srvSocket);
