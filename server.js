@@ -18,9 +18,10 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 var http = require("http");
+var path = require("path");
 var url = require("url");
 
-var sogou = require("./sogou");
+var sogou = require(path.resolve(__dirname, "./sogou"));
 
 var localAddr = '0.0.0.0',
     localPort = 8083,
@@ -65,6 +66,16 @@ var newProxyRequest = function (request) {
 
     return proxyRequest;
 };
+
+proxyServer.on('error', function (err) {
+    if (err.code == 'EADDRINUSE') {
+        console.warn('Address in use, retrying...');
+        setTimeout(function () {
+            proxyServer.close();
+            proxyServer.listen(localPort, localAddr);
+        }, 1000);
+    }
+});
 
 proxyServer.on("request", function (cltRequest, cltResponse) {
     var srvRequest = newProxyRequest(cltRequest);
