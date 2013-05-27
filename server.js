@@ -17,11 +17,11 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-var http = require("http");
-var path = require("path");
-var url = require("url");
+var http = require("http"),
+    path = require("path"),
+    url = require("url"),
 
-var sogou = require(path.resolve(__dirname, "./sogou"));
+    sogou = require(path.resolve(__dirname, "./sogou"));
 
 var localAddr = "0.0.0.0",
     localPort = 8083,
@@ -29,7 +29,19 @@ var localAddr = "0.0.0.0",
     sogouServerAddr = sogou.newServerAddr("edu"),
     proxyServer = http.createServer();
 
-var CONNECTION_ESTABLISHED = "HTTP/1.1 200 Connection Established\r\n\r\n";
+
+var patchIncomingMessage = function (prototype) {
+    var _addHeaderLine = prototype._addHeaderLine;
+
+    //Patch ServerRequest to save unmodified copy of headers
+    prototype._addHeaderLine = function (field, value) {
+        var list = this.complete ?
+            (this.allTrailers || (this.allTrailers = [])) :
+            (this.allHeaders || (this.allHeaders = []));
+        list.push(field + ': ' + value);
+        _addHeaderLine.call(this, field, value);
+    };
+};
 
 var newProxyRequest = function (request) {
     console.log(request.method + " " + request.url);
@@ -83,26 +95,24 @@ proxyServer.on("error", function (err) {
     }
 });
 
-var capitalize = function (str) {
-    return str.split("-").map(function (string) {
-        return string.charAt(0).toUpperCase() + string.slice(1);
-    }).join("-");
-};
-
 proxyServer.on("request", function (cltRequest, cltResponse) {
     var srvRequest = newProxyRequest(cltRequest);
 
     srvRequest.on("response", function (srvResponse) {
         cltResponse.on("close", function () {
-            srvResponse.socket.close();
+            srvResponse.socket.end();
         });
-        // We must convert the header names to capitalized ones for some old clients.
-        var capitalizedHeaders = {};
-        Object.keys(srvResponse.headers).map(function (key) {
-            capitalizedHeaders[capitalize(key)] = srvResponse.headers[key];
-        });
-        cltResponse.writeHead(srvResponse.statusCode, capitalizedHeaders);
-        srvResponse.pipe(cltResponse);
+        // nodejs will make all names of http headers lower case, which breaks many old clients.
+        // We should directly manipulate response socket to send the raw http header.
+        cltResponse.socket.write([
+            "HTTP/" + srvResponse.httpVersion,
+            srvResponse.statusCode,
+            http.STATUS_CODES[srvResponse.statusCode]
+        ].join(" "));
+        cltResponse.socket.write("\r\n");
+        cltResponse.socket.write(srvResponse.allHeaders.join("\r\n"));
+        cltResponse.socket.write("\r\n\r\n");
+        srvResponse.pipe(cltResponse.socket);
     });
     cltRequest.pipe(srvRequest);
 });
@@ -112,12 +122,14 @@ proxyServer.on("connect", function (cltRequest, cltSocket) {
 
     srvRequest.end();
     srvRequest.on("connect", function (srvResponse, srvSocket) {
-        cltSocket.write(CONNECTION_ESTABLISHED);
+        cltSocket.write("HTTP/1.1 200 Connection Established\r\n\r\n");
         srvSocket.pipe(cltSocket);
         cltSocket.pipe(srvSocket);
     });
 });
 
 http.globalAgent.maxSockets = 128;
+patchIncomingMessage(http.IncomingMessage.prototype);
+
 proxyServer.listen(localPort, localAddr);
 
