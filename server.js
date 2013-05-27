@@ -20,6 +20,7 @@
 var http = require("http"),
     path = require("path"),
     url = require("url"),
+    util = require("util"),
 
     sogou = require(path.resolve(__dirname, "./sogou"));
 
@@ -44,7 +45,7 @@ var patchIncomingMessage = function (prototype) {
 };
 
 var newProxyRequest = function (request) {
-    console.log(request.method + " " + request.url);
+    util.debug(request.method + " " + request.url);
 
     var reqHost = request.headers.host;
     if (typeof reqHost === "undefined") {
@@ -79,7 +80,7 @@ var newProxyRequest = function (request) {
 
     var proxyRequest = http.request(requestOptions);
     proxyRequest.on("error", function (err) {
-        console.error("Proxy Error: " + err.message);
+        util.error("Proxy Error: " + err.message);
     });
 
     return proxyRequest;
@@ -87,7 +88,7 @@ var newProxyRequest = function (request) {
 
 proxyServer.on("error", function (err) {
     if (err.code == "EADDRINUSE") {
-        console.warn("Address in use, retrying...");
+        util.error("Address in use, retrying...");
         setTimeout(function () {
             proxyServer.close();
             proxyServer.listen(localPort, localAddr);
@@ -100,19 +101,19 @@ proxyServer.on("request", function (cltRequest, cltResponse) {
 
     srvRequest.on("response", function (srvResponse) {
         cltResponse.on("close", function () {
-            srvResponse.socket.end();
+            // srvResponse.end method does not exist!
+            srvResponse.emit("end");
         });
         // nodejs will make all names of http headers lower case, which breaks many old clients.
-        // We should directly manipulate response socket to send the raw http header.
-        cltResponse.socket.write([
-            "HTTP/" + srvResponse.httpVersion,
-            srvResponse.statusCode,
-            http.STATUS_CODES[srvResponse.statusCode] || "unknown"
-        ].join(" "));
-        cltResponse.socket.write("\r\n");
-        cltResponse.socket.write(srvResponse.allHeaders.join("\r\n"));
-        cltResponse.socket.write("\r\n\r\n");
-        srvResponse.pipe(cltResponse.socket);
+        // Should not directly manipulate socket, because cltResponse.socket will sometimes become null.
+        var rawHeader = {};
+        srvResponse.allHeaders.map(function(header){
+            // We don't need to validate split result, since nodejs has guaranteed by valid srvResponse.headers.
+            var key = header.split(":")[0].trim();
+            rawHeader[key] = srvResponse.headers[key.toLowerCase()];
+        });
+        cltResponse.writeHead(srvResponse.statusCode, rawHeader);
+        srvResponse.pipe(cltResponse);
     });
     cltRequest.pipe(srvRequest);
 });
