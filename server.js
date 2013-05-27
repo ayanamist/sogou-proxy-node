@@ -107,7 +107,7 @@ proxyServer.on("request", function (cltRequest, cltResponse) {
         cltResponse.socket.write([
             "HTTP/" + srvResponse.httpVersion,
             srvResponse.statusCode,
-            http.STATUS_CODES[srvResponse.statusCode]
+            http.STATUS_CODES[srvResponse.statusCode] || "unknown"
         ].join(" "));
         cltResponse.socket.write("\r\n");
         cltResponse.socket.write(srvResponse.allHeaders.join("\r\n"));
