@@ -85,6 +85,9 @@ proxyServer.on("request", function (cltRequest, cltResponse) {
     var srvRequest = newProxyRequest(cltRequest);
 
     srvRequest.on("response", function (srvResponse) {
+        cltResponse.on("close", function () {
+            srvResponse.end();
+        });
         cltResponse.writeHead(srvResponse.statusCode, srvResponse.headers);
         srvResponse.pipe(cltResponse);
     });
@@ -102,5 +105,6 @@ proxyServer.on("connect", function (cltRequest, cltSocket) {
     });
 });
 
+http.globalAgent.maxSockets = 128;
 proxyServer.listen(localPort, localAddr);
 
