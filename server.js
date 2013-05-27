@@ -23,11 +23,13 @@ var url = require("url");
 
 var sogou = require(path.resolve(__dirname, "./sogou"));
 
-var localAddr = '0.0.0.0',
+var localAddr = "0.0.0.0",
     localPort = 8083,
     sogouAuthStr = sogou.newAuthStr(),
     sogouServerAddr = sogou.newServerAddr("edu"),
     proxyServer = http.createServer();
+
+var CONNECTION_ESTABLISHED = "HTTP/1.1 200 Connection Established\r\n\r\n";
 
 var newProxyRequest = function (request) {
     console.log(request.method + " " + request.url);
@@ -59,21 +61,21 @@ var newProxyRequest = function (request) {
         timestamp = Date.now().toString(16),
         sogou_tag = sogou.computeSogouTag(timestamp, reqHost);
 
-    requestOptions.headers['X-Sogou-Auth'] = sogouAuthStr;
-    requestOptions.headers['X-Sogou-Timestamp'] = timestamp;
-    requestOptions.headers['X-Sogou-Tag'] = sogou_tag;
+    requestOptions.headers["X-Sogou-Auth"] = sogouAuthStr;
+    requestOptions.headers["X-Sogou-Timestamp"] = timestamp;
+    requestOptions.headers["X-Sogou-Tag"] = sogou_tag;
 
     var proxyRequest = http.request(requestOptions);
     proxyRequest.on("error", function (err) {
-        console.error('Proxy Error: ' + err.message);
+        console.error("Proxy Error: " + err.message);
     });
 
     return proxyRequest;
 };
 
-proxyServer.on('error', function (err) {
-    if (err.code == 'EADDRINUSE') {
-        console.warn('Address in use, retrying...');
+proxyServer.on("error", function (err) {
+    if (err.code == "EADDRINUSE") {
+        console.warn("Address in use, retrying...");
         setTimeout(function () {
             proxyServer.close();
             proxyServer.listen(localPort, localAddr);
@@ -99,7 +101,7 @@ proxyServer.on("connect", function (cltRequest, cltSocket) {
 
     srvRequest.end();
     srvRequest.on("connect", function (srvResponse, srvSocket) {
-        cltSocket.write("HTTP/1.1 200 Connection Established\r\n\r\n");
+        cltSocket.write(CONNECTION_ESTABLISHED);
         srvSocket.pipe(cltSocket);
         cltSocket.pipe(srvSocket);
     });

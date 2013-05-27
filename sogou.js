@@ -17,13 +17,13 @@ var newAuthStr = function () {
 var newServerAddr = function (provider) {
     var totalServerNum = serverTypes[provider];
     if (typeof totalServerNum !== "number") {
-        console.error("Unknown provider: " + provider);
+        throw new Error("Unknown provider: " + provider);
     }
-    return "h" + Math.floor(Math.random() * totalServerNum) + "." + provider + ".bj.ie.sogou.com";
+    return "h" + Math.round(Math.random() * totalServerNum).toString() + "." + provider + ".bj.ie.sogou.com";
 };
 
 var computeSogouTag = function (timestamp, hostname) {
-    var s = timestamp + hostname + 'SogouExplorerProxy',
+    var s = timestamp + hostname + "SogouExplorerProxy",
         sLen = s.length,
         numIter = Math.floor(sLen / 4),
         numRemain = sLen % 4,
@@ -84,7 +84,7 @@ var computeSogouTag = function (timestamp, hostname) {
     // learnt from http://goo.gl/oRJ0o
     hash = hash >>> 0;
 
-    return ('00000000' + hash.toString(16)).slice(-8);
+    return ("00000000" + hash.toString(16)).slice(-8);
 };
 
 var exports = exports || {};
