@@ -83,14 +83,25 @@ proxyServer.on("error", function (err) {
     }
 });
 
+var capitalize = function (str) {
+    return str.split("-").map(function (string) {
+        return string.charAt(0).toUpperCase() + string.slice(1);
+    }).join("-");
+};
+
 proxyServer.on("request", function (cltRequest, cltResponse) {
     var srvRequest = newProxyRequest(cltRequest);
 
     srvRequest.on("response", function (srvResponse) {
         cltResponse.on("close", function () {
-            srvResponse.end();
+            srvResponse.socket.close();
         });
-        cltResponse.writeHead(srvResponse.statusCode, srvResponse.headers);
+        // We must convert the header names to capitalized ones for some old clients.
+        var capitalizedHeaders = {};
+        Object.keys(srvResponse.headers).map(function (key) {
+            capitalizedHeaders[capitalize(key)] = srvResponse.headers[key];
+        });
+        cltResponse.writeHead(srvResponse.statusCode, capitalizedHeaders);
         srvResponse.pipe(cltResponse);
     });
     cltRequest.pipe(srvRequest);
