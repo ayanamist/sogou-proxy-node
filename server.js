@@ -29,6 +29,7 @@ var localAddr = "0.0.0.0",
     localPort = 8083,
     sogouAuthStr = sogou.newAuthStr(),
     sogouServerAddr = sogou.newServerAddr("edu"),
+    logFile = fs.createWriteStream(__dirname + "/error.log", {flags: "a"}),
     proxyServer = http.createServer();
 
 
@@ -131,10 +132,10 @@ proxyServer.on("connect", function (cltRequest, cltSocket) {
 });
 
 process.__defineGetter__("stderr", function () {
-        return fs.createWriteStream(__dirname + "/error.log", {flags: "a"})
+        return logFile;
     }
 );
-process.on("uncaughtException", function(err) {
+process.on("uncaughtException", function (err) {
     var errMsg = "Caught exception: " + err;
     console.log(errMsg);
     util.error(errMsg + "\n");
