@@ -21,7 +21,6 @@ var fs = require("fs"),
     http = require("http"),
     path = require("path"),
     url = require("url"),
-    util = require("util"),
 
     sogou = require(path.resolve(__dirname, "./sogou"));
 
@@ -138,7 +137,7 @@ process.__defineGetter__("stderr", function () {
 process.on("uncaughtException", function (err) {
     var errMsg = "Caught exception: " + err;
     console.log(errMsg);
-    util.error(errMsg + "\n");
+    console.error(errMsg);
 });
 
 
