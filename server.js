@@ -17,7 +17,8 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-var http = require("http"),
+var fs = require("fs"),
+    http = require("http"),
     path = require("path"),
     url = require("url"),
     util = require("util"),
@@ -45,7 +46,7 @@ var patchIncomingMessage = function (prototype) {
 };
 
 var newProxyRequest = function (request) {
-    util.debug(request.method + " " + request.url);
+    console.log(request.method + " " + request.url);
 
     var reqHost = request.headers.host;
     if (typeof reqHost === "undefined") {
@@ -80,7 +81,7 @@ var newProxyRequest = function (request) {
 
     var proxyRequest = http.request(requestOptions);
     proxyRequest.on("error", function (err) {
-        util.error("Proxy Error: " + err.message);
+        console.log("Proxy Error: " + err);
     });
 
     return proxyRequest;
@@ -88,7 +89,7 @@ var newProxyRequest = function (request) {
 
 proxyServer.on("error", function (err) {
     if (err.code == "EADDRINUSE") {
-        util.error("Address in use, retrying...");
+        console.error("Address in use, retrying...");
         setTimeout(function () {
             proxyServer.close();
             proxyServer.listen(localPort, localAddr);
@@ -107,7 +108,7 @@ proxyServer.on("request", function (cltRequest, cltResponse) {
         // nodejs will make all names of http headers lower case, which breaks many old clients.
         // Should not directly manipulate socket, because cltResponse.socket will sometimes become null.
         var rawHeader = {};
-        srvResponse.allHeaders.map(function(header){
+        srvResponse.allHeaders.map(function (header) {
             // We don't need to validate split result, since nodejs has guaranteed by valid srvResponse.headers.
             var key = header.split(":")[0].trim();
             rawHeader[key] = srvResponse.headers[key.toLowerCase()];
@@ -128,6 +129,17 @@ proxyServer.on("connect", function (cltRequest, cltSocket) {
         cltSocket.pipe(srvSocket);
     });
 });
+
+process.__defineGetter__("stderr", function () {
+        return fs.createWriteStream(__dirname + "/error.log", {flags: "a"})
+    }
+);
+process.on("uncaughtException", function(err) {
+    var errMsg = "Caught exception: " + err;
+    console.log(errMsg);
+    util.error(errMsg + "\n");
+});
+
 
 http.globalAgent.maxSockets = 128;
 patchIncomingMessage(http.IncomingMessage.prototype);
