@@ -82,17 +82,14 @@ var newProxyRequest = function (request) {
 
     var proxyRequest = http.request(requestOptions);
     proxyRequest.on("error", function (err) {
-        if (err.code === "HPE_INVALID_CONSTANT") {
-            return;
-        }
-        console.log("Proxy Error: " + util.inspect(err));
+        console.error("proxyRequest:" + err.stack);
     });
 
     return proxyRequest;
 };
 
 proxyServer.on("error", function (err) {
-    if (err.code == "EADDRINUSE") {
+    if (err.code === "EADDRINUSE") {
         console.error("Address in use, retrying...");
         setTimeout(function () {
             proxyServer.close();
@@ -118,7 +115,7 @@ proxyServer.on("request", function (cltRequest, cltResponse) {
                 cltResponse.emit("close");
             }
             else {
-                console.error("srvResponse" + err.stack);
+                console.error("srvResponse:" + err.stack);
             }
         });
         cltResponse.on("close", function () {
@@ -172,7 +169,7 @@ process.__defineGetter__("stderr", function () {
     }
 );
 process.on("uncaughtException", function (err) {
-    var errMsg = "Caught exception: " + err.stack + "\n" + util.inspect(err);
+    var errMsg = "Uncaught:" + err.stack + "\n" + util.inspect(err);
     console.log(errMsg);
     console.error(errMsg);
 });
