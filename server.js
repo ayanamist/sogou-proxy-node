@@ -92,7 +92,7 @@ proxyServer.on("error", function (err) {
     if (err.code === "EADDRINUSE") {
         console.error("Address in use, retrying...");
         setTimeout(function () {
-            proxyServer.close();
+            proxyServer.emit("end");
             proxyServer.listen(localPort, localAddr);
         }, 1000);
     }
@@ -153,10 +153,10 @@ proxyServer.on("connect", function (cltRequest, cltSocket) {
             srvSocket.emit("close");
         });
         cltSocket.on("close", function () {
-            srvSocket.close();
+            srvSocket.emit("end");
         });
         srvSocket.on("close", function () {
-            cltSocket.close();
+            cltSocket.emit("end");
         });
         cltSocket.write("HTTP/1.1 200 Connection Established\r\n\r\n");
         srvSocket.pipe(cltSocket);
