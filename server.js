@@ -135,7 +135,7 @@ process.__defineGetter__("stderr", function () {
     }
 );
 process.on("uncaughtException", function (err) {
-    var errMsg = "Caught exception: " + err;
+    var errMsg = "Caught exception: " + err.stack;
     console.log(errMsg);
     console.error(errMsg);
 });
