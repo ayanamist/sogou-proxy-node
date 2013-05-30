@@ -21,6 +21,7 @@ var fs = require("fs"),
     http = require("http"),
     path = require("path"),
     url = require("url"),
+    util = require("util"),
 
     sogou = require(path.resolve(__dirname, "./sogou"));
 
@@ -81,7 +82,10 @@ var newProxyRequest = function (request) {
 
     var proxyRequest = http.request(requestOptions);
     proxyRequest.on("error", function (err) {
-        console.log("Proxy Error: " + err);
+        if (err.code === "HPE_INVALID_CONSTANT") {
+            return;
+        }
+        console.log("Proxy Error: " + util.inspect(err));
     });
 
     return proxyRequest;
@@ -135,7 +139,7 @@ process.__defineGetter__("stderr", function () {
     }
 );
 process.on("uncaughtException", function (err) {
-    var errMsg = "Caught exception: " + err.stack;
+    var errMsg = "Caught exception: " + err.stack + "\n" + util.inspect(err);
     console.log(errMsg);
     console.error(errMsg);
 });
