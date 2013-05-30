@@ -99,15 +99,34 @@ proxyServer.on("error", function (err) {
             proxyServer.listen(localPort, localAddr);
         }, 1000);
     }
+    else {
+        throw err;
+    }
 });
 
 proxyServer.on("request", function (cltRequest, cltResponse) {
     var srvRequest = newProxyRequest(cltRequest);
 
     srvRequest.on("response", function (srvResponse) {
+        cltResponse.on("error", function (err) {
+            console.error("cltResponse:" + err.stack);
+            cltResponse.emit("close");
+        });
+
+        srvResponse.on("error", function (err){
+            if (err.code === "ECONNRESET") {
+                cltResponse.emit("close");
+            }
+            else {
+                console.error("srvResponse" + err.stack);
+            }
+        });
         cltResponse.on("close", function () {
             // srvResponse.end method does not exist!
             srvResponse.emit("end");
+        });
+        srvResponse.on("close", function () {
+            cltResponse.emit("end");
         });
         // nodejs will make all names of http headers lower case, which breaks many old clients.
         // Should not directly manipulate socket, because cltResponse.socket will sometimes become null.
@@ -128,6 +147,20 @@ proxyServer.on("connect", function (cltRequest, cltSocket) {
 
     srvRequest.end();
     srvRequest.on("connect", function (srvResponse, srvSocket) {
+        cltSocket.on("error", function (err) {
+            console.error("cltSocket:" + err.stack);
+            cltSocket.emit("close");
+        });
+        srvSocket.on("error", function (err) {
+            console.error("srvSocket:" + err.stack);
+            srvSocket.emit("close");
+        });
+        cltSocket.on("close", function () {
+            srvSocket.close();
+        });
+        srvSocket.on("close", function () {
+            cltSocket.close();
+        });
         cltSocket.write("HTTP/1.1 200 Connection Established\r\n\r\n");
         srvSocket.pipe(cltSocket);
         cltSocket.pipe(srvSocket);
