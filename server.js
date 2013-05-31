@@ -46,7 +46,7 @@ var patchIncomingMessage = function (prototype) {
     };
 };
 
-var newProxyRequest = function (request) {
+var newProxyRequest = function (request, response) {
     console.log(request.method + " " + request.url);
 
     var reqHost = request.headers.host;
@@ -82,7 +82,12 @@ var newProxyRequest = function (request) {
 
     var proxyRequest = http.request(requestOptions);
     proxyRequest.on("error", function (err) {
-        console.error("proxyRequest:" + err.stack);
+        if (err.code === "ETIMEDOUT") {
+        }
+        else {
+            console.error("proxyRequest:" + err.stack);
+        }
+        response.emit("end");
     });
 
     return proxyRequest;
@@ -102,21 +107,25 @@ proxyServer.on("error", function (err) {
 });
 
 proxyServer.on("request", function (cltRequest, cltResponse) {
-    var srvRequest = newProxyRequest(cltRequest);
+    var srvRequest = newProxyRequest(cltRequest, cltResponse);
 
     srvRequest.on("response", function (srvResponse) {
         cltResponse.on("error", function (err) {
-            console.error("cltResponse:" + err.stack);
+            if (err.code === "ECONNRESET" || err.code === "ECONNABORTED") {
+            }
+            else {
+                console.error("cltResponse:" + err.stack);
+            }
             cltResponse.emit("close");
         });
 
         srvResponse.on("error", function (err){
-            if (err.code === "ECONNRESET") {
-                cltResponse.emit("close");
+            if (err.code === "ECONNRESET" || err.code === "ECONNABORTED") {
             }
             else {
                 console.error("srvResponse:" + err.stack);
             }
+            cltResponse.emit("close");
         });
         cltResponse.on("close", function () {
             // srvResponse.end method does not exist!
@@ -140,16 +149,24 @@ proxyServer.on("request", function (cltRequest, cltResponse) {
 });
 
 proxyServer.on("connect", function (cltRequest, cltSocket) {
-    var srvRequest = newProxyRequest(cltRequest);
+    var srvRequest = newProxyRequest(cltRequest, cltSocket);
 
     srvRequest.end();
     srvRequest.on("connect", function (srvResponse, srvSocket) {
         cltSocket.on("error", function (err) {
-            console.error("cltSocket:" + err.stack);
+            if (err.code === "ECONNRESET" || err.code === "ECONNABORTED") {
+            }
+            else {
+                console.error("cltSocket:" + err.stack);
+            }
             cltSocket.emit("close");
         });
         srvSocket.on("error", function (err) {
-            console.error("srvSocket:" + err.stack);
+            if (err.code === "ECONNRESET" || err.code === "ECONNABORTED") {
+            }
+            else {
+                console.error("srvSocket:" + err.stack);
+            }
             srvSocket.emit("close");
         });
         cltSocket.on("close", function () {
