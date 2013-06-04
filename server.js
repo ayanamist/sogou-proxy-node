@@ -82,10 +82,11 @@ var newProxyRequest = function (request, response) {
 
     var proxyRequest = http.request(requestOptions);
     proxyRequest.on("error", function (err) {
-        if (err.code === "ETIMEDOUT") {
-        }
-        else {
-            console.error("proxyRequest:" + err.stack);
+        if (err.code === "HPE_INVALID_CONSTANT" ||
+            err.code === "ETIMEDOUT" ||
+            err.code === "ENOTFOUND") {
+        } else {
+            console.error("proxyRequest:" + util.inspect(err) + err.stack);
         }
         response.emit("end");
     });
