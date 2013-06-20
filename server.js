@@ -32,6 +32,17 @@ var localAddr = "0.0.0.0",
     proxyServer = http.createServer();
 
 
+var logError = function (name, err) {
+    if (typeof err === "undefined") {
+        err = name;
+        name = "root";
+    }
+    var errMsg = name + ":" + err.stack + "\n" + util.inspect(err);
+    console.log(errMsg);
+    console.error(errMsg);
+
+};
+
 var newProxyRequest = function (request, response) {
     console.log(request.method + " " + request.url + " HTTP/" + request.httpVersion);
 
@@ -76,30 +87,6 @@ var newProxyRequest = function (request, response) {
 
     return proxyRequest;
 };
-
-var logError = function (name, err) {
-    if (typeof err === "undefined") {
-        err = name;
-        name = "root";
-    }
-    var errMsg = name + ":" + err.stack + "\n" + util.inspect(err);
-    console.log(errMsg);
-    console.error(errMsg);
-
-};
-
-proxyServer.on("error", function (err) {
-    if (err.code === "EADDRINUSE") {
-        console.error("Address in use, retrying...");
-        setTimeout(function () {
-            proxyServer.emit("end");
-            proxyServer.listen(localPort, localAddr);
-        }, 1000);
-    }
-    else {
-        throw err;
-    }
-});
 
 proxyServer.on("request", function (cltRequest, cltResponse) {
     var srvRequest = newProxyRequest(cltRequest, cltResponse);
@@ -147,8 +134,8 @@ proxyServer.on("request", function (cltRequest, cltResponse) {
 
 proxyServer.on("connect", function (cltRequest, cltSocket) {
     var srvRequest = newProxyRequest(cltRequest, cltSocket);
-
     srvRequest.end();
+
     srvRequest.on("connect", function (srvResponse, srvSocket) {
         cltSocket.on("error", function (err) {
             if (err.code === "ECONNRESET" ||
@@ -190,7 +177,7 @@ process.on("uncaughtException", function (err) {
     logError("Uncaught", err);
 });
 
-(function patchHttp(http) {
+(function setupHttp(http) {
     http.globalAgent.maxSockets = 128;
 
     var prototype = http.IncomingMessage.prototype,
@@ -206,4 +193,16 @@ process.on("uncaughtException", function (err) {
 })(http);
 
 proxyServer.listen(localPort, localAddr);
+proxyServer.on("error", function (err) {
+    if (err.code === "EADDRINUSE") {
+        console.error("Address in use, retrying...");
+        setTimeout(function () {
+            proxyServer.emit("end");
+            proxyServer.listen(localPort, localAddr);
+        }, 1000);
+    }
+    else {
+        throw err;
+    }
+});
 
