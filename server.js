@@ -47,20 +47,17 @@ var patchIncomingMessage = function (prototype) {
 };
 
 var newProxyRequest = function (request, response) {
-    console.log(request.method + " " + request.url);
+    console.log(request.method + " " + request.url + " HTTP/" + request.httpVersion);
 
     var reqHost = request.headers.host;
     if (typeof reqHost === "undefined") {
-        if (request.method.toUpperCase() === "CONNECT") {
-            reqHost = url.parse("http://" + request.url).host;
+        if (request.method === "CONNECT") {
+            reqHost = request.url;
         }
         else {
             reqHost = url.parse(request.url).host;
         }
-        if (typeof reqHost === "undefined") {
-            reqHost = "";
-        }
-        else {
+        if (typeof reqHost !== "undefined") {
             request.headers.host = reqHost;
         }
     }
