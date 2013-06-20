@@ -32,19 +32,6 @@ var localAddr = "0.0.0.0",
     proxyServer = http.createServer();
 
 
-var patchIncomingMessage = function (prototype) {
-    var _addHeaderLine = prototype._addHeaderLine;
-
-    //Patch ServerRequest to save unmodified copy of headers
-    prototype._addHeaderLine = function (field, value) {
-        var list = this.complete ?
-            (this.allTrailers || (this.allTrailers = [])) :
-            (this.allHeaders || (this.allHeaders = []));
-        list.push(field + ': ' + value);
-        _addHeaderLine.call(this, field, value);
-    };
-};
-
 var newProxyRequest = function (request, response) {
     console.log(request.method + " " + request.url + " HTTP/" + request.httpVersion);
 
@@ -203,9 +190,20 @@ process.on("uncaughtException", function (err) {
     logError("Uncaught", err);
 });
 
+(function patchHttp(http) {
+    http.globalAgent.maxSockets = 128;
 
-http.globalAgent.maxSockets = 128;
-patchIncomingMessage(http.IncomingMessage.prototype);
+    var prototype = http.IncomingMessage.prototype,
+        _addHeaderLine = prototype._addHeaderLine;
+    //Patch ServerRequest to save unmodified copy of headers
+    prototype._addHeaderLine = function (field, value) {
+        var list = this.complete ?
+            (this.allTrailers || (this.allTrailers = [])) :
+            (this.allHeaders || (this.allHeaders = []));
+        list.push(field + ': ' + value);
+        _addHeaderLine.call(this, field, value);
+    };
+})(http);
 
 proxyServer.listen(localPort, localAddr);
 
