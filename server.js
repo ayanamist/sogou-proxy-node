@@ -19,11 +19,10 @@
  */
 var fs = require("fs"),
     http = require("http"),
-    path = require("path"),
     url = require("url"),
     util = require("util"),
 
-    sogou = require(path.resolve(__dirname, "./sogou"));
+    sogou = require("sogou");
 
 var localAddr = "0.0.0.0",
     localPort = 8083,
@@ -120,7 +119,8 @@ proxyServer.on("request", function (cltRequest, cltResponse) {
 
     srvRequest.on("response", function (srvResponse) {
         cltResponse.on("error", function (err) {
-            if (err.code === "ECONNRESET" || err.code === "ECONNABORTED") {
+            if (err.code === "ECONNRESET" ||
+                err.code === "ECONNABORTED") {
             }
             else {
                 logError("cltResponse", err);
@@ -128,8 +128,9 @@ proxyServer.on("request", function (cltRequest, cltResponse) {
             cltResponse.emit("close");
         });
 
-        srvResponse.on("error", function (err){
-            if (err.code === "ECONNRESET" || err.code === "ECONNABORTED") {
+        srvResponse.on("error", function (err) {
+            if (err.code === "ECONNRESET" ||
+                err.code === "ECONNABORTED") {
             }
             else {
                 logError("srvResponse", err);
@@ -163,7 +164,9 @@ proxyServer.on("connect", function (cltRequest, cltSocket) {
     srvRequest.end();
     srvRequest.on("connect", function (srvResponse, srvSocket) {
         cltSocket.on("error", function (err) {
-            if (err.code === "ECONNRESET" || err.code === "ECONNABORTED") {
+            if (err.code === "ECONNRESET" ||
+                err.code === "ECONNABORTED" ||
+                err instanceof Error) {
             }
             else {
                 logError("cltSocket", err);
@@ -171,7 +174,9 @@ proxyServer.on("connect", function (cltRequest, cltSocket) {
             cltSocket.emit("close");
         });
         srvSocket.on("error", function (err) {
-            if (err.code === "ECONNRESET" || err.code === "ECONNABORTED") {
+            if (err.code === "ECONNRESET" ||
+                err.code === "ECONNABORTED" ||
+                err instanceof Error) {
             }
             else {
                 logError("srvSocket", err);
