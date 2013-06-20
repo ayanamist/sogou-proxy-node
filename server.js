@@ -86,12 +86,23 @@ var newProxyRequest = function (request, response) {
             err.code === "ETIMEDOUT" ||
             err.code === "ENOTFOUND") {
         } else {
-            console.error("proxyRequest:" + util.inspect(err) + err.stack);
+            logError("proxyRequest", err);
         }
         response.emit("end");
     });
 
     return proxyRequest;
+};
+
+var logError = function (name, err) {
+    if (typeof err === "undefined") {
+        err = name;
+        name = "root";
+    }
+    var errMsg = name + ":" + err.stack + "\n" + util.inspect(err);
+    console.log(errMsg);
+    console.error(errMsg);
+
 };
 
 proxyServer.on("error", function (err) {
@@ -115,7 +126,7 @@ proxyServer.on("request", function (cltRequest, cltResponse) {
             if (err.code === "ECONNRESET" || err.code === "ECONNABORTED") {
             }
             else {
-                console.error("cltResponse:" + err.stack);
+                logError("cltResponse", err);
             }
             cltResponse.emit("close");
         });
@@ -124,7 +135,7 @@ proxyServer.on("request", function (cltRequest, cltResponse) {
             if (err.code === "ECONNRESET" || err.code === "ECONNABORTED") {
             }
             else {
-                console.error("srvResponse:" + err.stack);
+                logError("srvResponse", err);
             }
             cltResponse.emit("close");
         });
@@ -158,7 +169,7 @@ proxyServer.on("connect", function (cltRequest, cltSocket) {
             if (err.code === "ECONNRESET" || err.code === "ECONNABORTED") {
             }
             else {
-                console.error("cltSocket:" + err.stack);
+                logError("cltSocket", err);
             }
             cltSocket.emit("close");
         });
@@ -166,7 +177,7 @@ proxyServer.on("connect", function (cltRequest, cltSocket) {
             if (err.code === "ECONNRESET" || err.code === "ECONNABORTED") {
             }
             else {
-                console.error("srvSocket:" + err.stack);
+                logError("srvSocket", err);
             }
             srvSocket.emit("close");
         });
@@ -187,9 +198,7 @@ process.__defineGetter__("stderr", function () {
     }
 );
 process.on("uncaughtException", function (err) {
-    var errMsg = "Uncaught:" + err.stack + "\n" + util.inspect(err);
-    console.log(errMsg);
-    console.error(errMsg);
+    logError("Uncaught", err);
 });
 
 
