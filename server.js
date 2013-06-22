@@ -22,7 +22,7 @@ var fs = require("fs"),
     url = require("url"),
     util = require("util"),
 
-    sogou = require("sogou");
+    sogou = require("./sogou");
 
 var localAddr = "0.0.0.0",
     localPort = 8083,
